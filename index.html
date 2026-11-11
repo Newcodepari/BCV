@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breast Cancer Diagnostic Triage System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0A2540;
+            --primary-light: #1A365D;
+            --accent: #0070F3;
+            --accent-soft: #EBF5FF;
+            --bg-main: #F4F7FA;
+            --card-bg: #FFFFFF;
+            --text-dark: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --danger: #E11D48;
+            --danger-bg: #FFE4E6;
+            --success: #10B981;
+            --success-bg: #D1FAE5;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-dark); display: flex; flex-direction: column; min-height: 100vh; }
+
+        header {
+            background-color: var(--primary);
+            color: #FFFFFF;
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 0.75rem; }
+        .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; font-weight: bold; }
+        .status-badge { background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.85rem; border: 1px solid rgba(52, 211, 153, 0.3); }
+
+        .main-layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; padding: 2rem; max-width: 1400px; margin: 0 auto; width: 100%; flex: 1; }
+        
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent-soft); display: flex; justify-content: space-between; align-items: center; }
+
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+        .tab-btn { padding: 0.6rem 1.2rem; border: none; background: none; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; max-height: 520px; overflow-y: auto; padding-right: 0.5rem; }
+        .input-group { display: flex; flex-direction: column; gap: 0.35rem; }
+        .input-group label { font-size: 0.825rem; font-weight: 500; color: var(--text-muted); }
+        .input-group input { padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; transition: border-color 0.2s; }
+        .input-group input:focus { border-color: var(--accent); outline: none; }
+
+        .btn-group { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+        .btn { flex: 1; padding: 0.8rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; text-align: center; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--accent-soft); color: var(--accent); }
+        .btn:hover { opacity: 0.9; }
+
+        .result-box { display: flex; flex-direction: column; gap: 1.25rem; text-align: center; }
+        .gauge-container { position: relative; width: 160px; height: 160px; margin: 0 auto; display: grid; place-items: center; }
+        .result-badge { padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge-malignant { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(225, 29, 72, 0.3); }
+        .badge-benign { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .metric-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+        .metric-row span:last-child { font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">+</div>
+            <div>
+                <h1 style="font-size: 1.1rem; font-weight: 600;">Oncology Triage AI</h1>
+                <p style="font-size: 0.75rem; opacity: 0.8;">Breast Biopsy Decision Support System</p>
+            </div>
+        </div>
+        <div class="status-badge" id="apiStatus">API Online (Port 8000)</div>
+    </header>
+
+    <main class="main-layout">
+        <section class="card">
+            <div class="card-title">
+                <span>Cell Nuclei Measurements (30 Features)</span>
+                <div>
+                    <button class="btn btn-secondary" onclick="loadSample('malignant')" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Sample Malignant</button>
+                    <button class="btn btn-secondary" onclick="loadSample('benign')" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Sample Benign</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('mean')">Mean Features</button>
+                <button class="tab-btn" onclick="switchTab('se')">Standard Error (SE)</button>
+                <button class="tab-btn" onclick="switchTab('worst')">Worst Features</button>
+            </div>
+
+            <form id="biopsyForm">
+                <div id="meanGroup" class="form-grid"></div>
+                <div id="seGroup" class="form-grid" style="display: none;"></div>
+                <div id="worstGroup" class="form-grid" style="display: none;"></div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+                    <button type="submit" class="btn btn-primary">Run Diagnostic Prediction</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="card-title">Diagnostic Assessment Output</div>
+            <div class="result-box">
+                <div class="result-badge badge-malignant" id="diagnosisBadge">Pending Analysis</div>
+                
+                <div style="margin: 1rem 0;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Malignancy Confidence Probability</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);" id="probValue">-- %</div>
+                </div>
+
+                <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; text-align: left;">
+                    <div class="metric-row">
+                        <span>Pathology Priority Flag:</span>
+                        <span id="priorityFlag" style="color: var(--text-muted);">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Classification Model:</span>
+                        <span>Logistic Regression</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Pipeline Scaling:</span>
+                        <span>StandardScaler Fit</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const features = ["radius","texture","perimeter","area","smoothness","compactness","concavity","concave_points","symmetry","fractal_dimension"];
+        
+        const sampleMalignant = {
+            mean_radius: 17.99, mean_texture: 10.38, mean_perimeter: 122.8, mean_area: 1001.0, mean_smoothness: 0.1184, mean_compactness: 0.2776, mean_concavity: 0.3001, mean_concave_points: 0.1471, mean_symmetry: 0.2419, mean_fractal_dimension: 0.07871,
+            se_radius: 1.095, se_texture: 0.9053, se_perimeter: 8.589, se_area: 153.4, se_smoothness: 0.006399, se_compactness: 0.04904, se_concavity: 0.05373, se_concave_points: 0.01587, se_symmetry: 0.03003, se_fractal_dimension: 0.006193,
+            worst_radius: 25.38, worst_texture: 17.33, worst_perimeter: 184.6, worst_area: 2019.0, worst_smoothness: 0.1622, worst_compactness: 0.6656, worst_concavity: 0.7119, worst_concave_points: 0.2654, worst_symmetry: 0.4601, worst_fractal_dimension: 0.1189
+        };
+
+        const sampleBenign = {
+            mean_radius: 13.54, mean_texture: 14.36, mean_perimeter: 87.46, mean_area: 566.3, mean_smoothness: 0.09779, mean_compactness: 0.08129, mean_concavity: 0.06664, mean_concave_points: 0.04781, mean_symmetry: 0.1885, mean_fractal_dimension: 0.05766,
+            se_radius: 0.2699, se_texture: 0.7886, se_perimeter: 2.058, se_area: 23.56, se_smoothness: 0.008462, se_compactness: 0.0146, se_concavity: 0.02387, se_concave_points: 0.01315, se_symmetry: 0.0198, se_fractal_dimension: 0.0023,
+            worst_radius: 15.11, worst_texture: 19.26, worst_perimeter: 99.7, worst_area: 711.2, worst_smoothness: 0.144, worst_compactness: 0.1773, worst_concavity: 0.239, worst_concave_points: 0.1288, worst_symmetry: 0.2977, worst_fractal_dimension: 0.07259
+        };
+
+        function renderInputs() {
+            ['mean', 'se', 'worst'].forEach(group => {
+                const container = document.getElementById(group + 'Group');
+                features.forEach(f => {
+                    const fieldName = `${group}_${f}`;
+                    container.innerHTML += `
+                        <div class="input-group">
+                            <label>${group.toUpperCase()} ${f.replace('_', ' ')}</label>
+                            <input type="number" step="any" id="${fieldName}" required>
+                        </div>`;
+                });
+            });
+        }
+
+        function switchTab(group) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            ['mean', 'se', 'worst'].forEach(g => {
+                document.getElementById(g + 'Group').style.display = g === group ? 'grid' : 'none';
+            });
+        }
+
+        function loadSample(type) {
+            const data = type === 'malignant' ? sampleMalignant : sampleBenign;
+            Object.keys(data).forEach(key => {
+                const el = document.getElementById(key);
+                if (el) el.value = data[key];
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('biopsyForm').reset();
+        }
+
+        document.getElementById('biopsyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {};
+            ['mean', 'se', 'worst'].forEach(group => {
+                features.forEach(f => {
+                    const key = `${group}_${f}`;
+                    payload[key] = parseFloat(document.getElementById(key).value) || 0.0;
+                });
+            });
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                const badge = document.getElementById('diagnosisBadge');
+                badge.innerText = data.diagnosis;
+                badge.className = `result-badge ${data.diagnosis === 'Malignant' ? 'badge-malignant' : 'badge-benign'}`;
+                
+                document.getElementById('probValue').innerText = (data.malignant_probability * 100).toFixed(1) + '%';
+                
+                const prio = document.getElementById('priorityFlag');
+                prio.innerText = data.priority_flag ? 'TRUE (IMMEDIATE REVIEW)' : 'FALSE (ROUTINE)';
+                prio.style.color = data.priority_flag ? 'var(--danger)' : 'var(--success)';
+            } catch (err) {
+                alert('Could not connects to local API server. Make sure Uvicorn is running.');
+            }
+        });
+
+        renderInputs();
+        loadSample('malignant');
+    </script>
+</body>
+</html>ss
